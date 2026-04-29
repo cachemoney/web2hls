@@ -16,10 +16,11 @@
     "clean": "rm -rf packages/*/dist"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
-    "tsup": "^8.4.0",
-    "vitest": "^3.1.0",
+    "eslint": "^9.22.0",
     "prettier": "^3.5.0",
-    "eslint": "^9.22.0"
+    "tsup": "^8.4.0",
+    "typedoc": "^0.28.19",
+    "typescript": "^5.7.0",
+    "vitest": "^3.1.0"
   }
 }

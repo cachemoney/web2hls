@@ -1,0 +1,13 @@
+{
+  "entryPoints": ["packages/web2hls/src/index.ts", "packages/react/src/index.ts"],
+  "out": "docs/api",
+  "name": "web2hls API Documentation",
+  "includeVersion": true,
+  "tsconfig": "tsconfig.base.json",
+  "exclude": ["**/*.test.ts", "**/*.test.tsx"],
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": false
+  }
+}
