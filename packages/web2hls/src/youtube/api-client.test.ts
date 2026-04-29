@@ -71,6 +71,34 @@ describe('YouTubeClient', () => {
     expect(streams[0].hlsIngestionUrl).toBe('http://hls');
   });
 
+  it('should get stream health', async () => {
+    const mockData = {
+      items: [
+        {
+          id: 's1',
+          status: {
+            healthStatus: {
+              status: 'excellent',
+            },
+          },
+        },
+      ],
+    };
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockData,
+    } as any);
+
+    const health = await client.getStreamHealth('s1');
+
+    expect(health).toBe('excellent');
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('liveStreams?part=status&id=s1'),
+      expect.any(Object)
+    );
+  });
+
   it('should create a broadcast', async () => {
     const mockData = {
       id: 'new-b',

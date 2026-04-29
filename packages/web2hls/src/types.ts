@@ -33,6 +33,8 @@ export interface PipelineConfig {
   segmentDuration?: number;
   /** Callback fired when a new HLS segment is ready */
   onSegment?: (segment: HLSSegment) => void;
+  /** Optional provider for external health status (e.g. YouTube Ingestion Health) */
+  healthProvider?: () => Promise<string>;
 }
 
 /** An HLS segment (MPEG-TS) */

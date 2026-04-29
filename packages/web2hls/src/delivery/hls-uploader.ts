@@ -47,7 +47,7 @@ export class HLSUploader {
 
         const response = await fetch(url, {
           method: 'PUT',
-          body: segment.data,
+          body: segment.data as any,
           headers: {
             'Content-Type': 'video/mp2t',
           },

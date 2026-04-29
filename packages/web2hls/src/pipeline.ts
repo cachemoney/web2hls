@@ -35,10 +35,15 @@ export class StreamingPipeline {
   private healthProvider: (() => Promise<string>) | null = null;
   private currentHealth: string = 'unknown';
   private healthCheckCounter = 0;
+  private segmentStartTime = 0;
 
   constructor(config: PipelineConfig) {
     this.config = config;
     this.clock = new MonotonicClock();
+
+    if (config.healthProvider) {
+      this.healthProvider = config.healthProvider;
+    }
     
     this.segmenter = new HLSSegmenter({
       onSegment: (segment) => {
@@ -78,7 +83,9 @@ export class StreamingPipeline {
         this.stats.totalBytesSent += data.byteLength;
       },
       onSegmentBoundary: () => {
-        this.segmenter.rotate(this.clock.now());
+        const now = this.clock.now();
+        this.segmenter.rotate(now);
+        this.segmentStartTime = now;
       },
       onError: (error) => {
         logger.error(`Pipeline error [${error.source}]: ${error.message}`);
@@ -109,7 +116,9 @@ export class StreamingPipeline {
     this.state = 'configuring';
     
     this.clock.start();
-    this.segmenter.setStartTime(this.clock.now());
+    const now = this.clock.now();
+    this.segmenter.setStartTime(now);
+    this.segmentStartTime = now;
     
     this.canvasCapture.start();
     if (this.audioCapture) {

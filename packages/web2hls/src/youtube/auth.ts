@@ -47,6 +47,10 @@ export class YouTubeAuth {
     this.storage = storage;
   }
 
+  logout(): void {
+    this.storage.clearToken();
+  }
+
   async generateAuthUrl(config: YouTubeAuthConfig): Promise<{ url: string; codeVerifier: string }> {
     const codeVerifier = this.generateCodeVerifier();
     const codeChallenge = await this.generateCodeChallenge(codeVerifier);

@@ -82,13 +82,17 @@ export class AudioCapture {
 
         const now = this.config.clock.now();
         const format = value.format;
+        if (!format) {
+          value.close();
+          continue;
+        }
         const sampleRate = value.sampleRate;
         const numberOfFrames = value.numberOfFrames;
         const numberOfChannels = value.numberOfChannels;
         
-        const bufferSize = value.allocationSize({ format });
+        const bufferSize = value.allocationSize({ format, planeIndex: 0 });
         const buffer = new ArrayBuffer(bufferSize);
-        value.copyTo(buffer, { format });
+        value.copyTo(buffer, { format, planeIndex: 0 });
         
         // Create a new AudioData object with the timestamp synced to our monotonic clock
         const newData = new AudioData({

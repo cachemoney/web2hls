@@ -108,7 +108,6 @@ async function setupVideoEncoder(config: any) {
           metadata
         }
       }, [data.buffer]);
-      chunk.close();
     },
     onError: (e) => {
       mainPort?.postMessage({ type: 'ERROR', payload: { source: 'video', message: e.message } });
@@ -148,7 +147,6 @@ async function setupAudioEncoder(config: any) {
           metadata
         }
       }, [data.buffer]);
-      chunk.close();
     },
     onError: (e) => {
       mainPort?.postMessage({ type: 'ERROR', payload: { source: 'audio', message: e.message } });
@@ -168,7 +166,7 @@ function encodeVideoFrame(frame: VideoFrame) {
   }
 
   try {
-    videoEncoder.encode(frame, { keyFrame: pendingKeyframe });
+    videoEncoder.encode(frame, pendingKeyframe);
     pendingKeyframe = false;
   } finally {
     frame.close();
