@@ -1,4 +1,4 @@
-import { MonotonicClock } from './clock';
+import { MonotonicClock } from '../utils/clock';
 
 export interface CanvasCaptureConfig {
   canvas: HTMLCanvasElement | OffscreenCanvas;

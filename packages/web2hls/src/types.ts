@@ -101,3 +101,45 @@ export type AudioChunkCallback = (chunk: EncodedAudioChunk, metadata?: EncodedAu
 
 /** Callback for MPEG-TS packets */
 export type TSPacketCallback = (packet: Uint8Array) => void;
+
+/** Types of events that can be sent through the pipeline */
+export type PipelineEventType =
+  | 'START'
+  | 'STOP'
+  | 'FRAME_READY'
+  | 'TELEMETRY_UPDATE'
+  | 'ERROR'
+  | 'CONFIGURE'
+  | 'SEGMENT_READY';
+
+/** Standardized interface for internal pipeline communication (e.g. between threads) */
+export interface PipelineEvent<T = any> {
+  type: PipelineEventType;
+  payload?: T;
+  /** Monotonic timestamp in microseconds */
+  timestamp: number;
+}
+
+/** Result pattern for error handling without try/catch overhead in hot loops */
+export interface Result<T = any, E = any> {
+  success: boolean;
+  data?: T;
+  error?: E;
+}
+
+/** Log levels supported by the library */
+export enum LogLevel {
+  DEBUG = 0,
+  INFO = 1,
+  WARN = 2,
+  ERROR = 3,
+  NONE = 4,
+}
+
+/** Logger interface for custom log implementations */
+export interface Logger {
+  debug(message: string, ...args: any[]): void;
+  info(message: string, ...args: any[]): void;
+  warn(message: string, ...args: any[]): void;
+  error(message: string, ...args: any[]): void;
+}
