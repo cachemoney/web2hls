@@ -146,3 +146,6 @@ vite.config.ts.timestamp-*
 =======
 .vite/
 >>>>>>> 2854792 (First commit)
+
+# bv (beads viewer) local config and caches
+.bv/
