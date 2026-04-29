@@ -51,6 +51,16 @@ export const StreamHealth: React.FC<StreamHealthProps> = ({ pipeline, className 
         <div style={{ color: '#888', marginBottom: '4px' }}>Segments</div>
         <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{stats.segmentsUploaded}</div>
       </div>
+      <div>
+        <div style={{ color: '#888', marginBottom: '4px' }}>Health</div>
+        <div style={{ 
+          fontSize: '18px', 
+          fontWeight: 'bold',
+          color: stats.health === 'excellent' ? '#44ff44' : (stats.health === 'good' ? '#ffff44' : '#ff4444')
+        }}>
+          {stats.health || 'unknown'}
+        </div>
+      </div>
     </div>
   );
 };

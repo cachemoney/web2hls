@@ -48,16 +48,7 @@ export function useYouTubeAuth(config: YouTubeAuthConfig): UseYouTubeAuthResult 
   }, [auth, config]);
 
   const logout = useCallback(() => {
-    auth.logout?.() || (new YouTubeAuth()).clearToken?.(); // Simple clear
-    // Accessing private members or clearToken which I implemented earlier
-    // Wait, I should check what YouTubeAuth exports.
-    // It exports SessionTokenStorage which has clearToken.
-    const storage = (auth as any).storage;
-    if (storage) {
-      storage.clearToken();
-    } else {
-      sessionStorage.removeItem('web2hls_youtube_token');
-    }
+    auth.logout();
     setToken(null);
   }, [auth]);
 
