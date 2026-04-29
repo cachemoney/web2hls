@@ -75,7 +75,6 @@ export class AudioEncoderWrapper {
 
   encode(data: AudioData): void {
     if (!this.encoder || this.encoder.state !== 'configured') {
-      data.close();
       return;
     }
 
@@ -83,7 +82,6 @@ export class AudioEncoderWrapper {
       this.encoder.encode(data);
     } catch (e) {
       logger.error('AudioEncoder encode error:', e);
-      data.close();
     }
   }
 

@@ -44,12 +44,20 @@ export class EncoderOrchestrator {
 
   encodeVideo(frame: VideoFrame): void {
     // Transfer the frame to the worker
-    this.port?.postMessage({ type: 'ENCODE_VIDEO', payload: frame }, [frame]);
+    if (this.port) {
+      this.port.postMessage({ type: 'ENCODE_VIDEO', payload: frame }, [frame]);
+    } else {
+      frame.close();
+    }
   }
 
   encodeAudio(data: AudioData): void {
     // Transfer the data to the worker
-    this.port?.postMessage({ type: 'ENCODE_AUDIO', payload: data }, [data]);
+    if (this.port) {
+      this.port.postMessage({ type: 'ENCODE_AUDIO', payload: data }, [data]);
+    } else {
+      data.close();
+    }
   }
 
   async flush(): Promise<void> {

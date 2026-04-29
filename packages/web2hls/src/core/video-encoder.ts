@@ -76,7 +76,6 @@ export class VideoEncoderWrapper {
 
   encode(frame: VideoFrame, keyFrame = false): void {
     if (!this.encoder || this.encoder.state !== 'configured') {
-      frame.close();
       return;
     }
 
@@ -84,7 +83,6 @@ export class VideoEncoderWrapper {
       this.encoder.encode(frame, { keyFrame });
     } catch (e) {
       logger.error('VideoEncoder encode error:', e);
-      frame.close();
     }
   }
 
