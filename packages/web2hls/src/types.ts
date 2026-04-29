@@ -93,11 +93,20 @@ export interface HLSUploaderConfig {
   retryBackoffMs?: number;
 }
 
+/** Encoded chunk data from WebCodecs */
+export interface EncodedChunk {
+  data: Uint8Array;
+  timestamp: number;
+  type: 'key' | 'delta';
+  duration?: number;
+  metadata?: any;
+}
+
 /** Callback for encoded video chunks */
-export type VideoChunkCallback = (chunk: EncodedVideoChunk, metadata?: EncodedVideoChunkMetadata) => void;
+export type VideoChunkCallback = (chunk: EncodedChunk) => void;
 
 /** Callback for encoded audio chunks */
-export type AudioChunkCallback = (chunk: EncodedAudioChunk, metadata?: EncodedAudioChunkMetadata) => void;
+export type AudioChunkCallback = (chunk: EncodedChunk) => void;
 
 /** Callback for MPEG-TS packets */
 export type TSPacketCallback = (packet: Uint8Array) => void;
