@@ -6,6 +6,7 @@ export interface EncoderOrchestratorConfig {
   audioConfig?: AudioEncoderConfig;
   onVideoChunk: (chunk: EncodedChunk) => void;
   onAudioChunk: (chunk: EncodedChunk) => void;
+  onMuxedChunk?: (chunk: Uint8Array) => void;
   onError: (error: { source: string; message: string }) => void;
 }
 
@@ -89,6 +90,9 @@ export class EncoderOrchestrator {
     const { type, payload } = event.data;
 
     switch (type) {
+      case 'MPEG_TS_CHUNK':
+        if (this.config.onMuxedChunk) this.config.onMuxedChunk(payload);
+        break;
       case 'VIDEO_CHUNK':
         this.config.onVideoChunk(payload);
         break;

@@ -2,14 +2,17 @@
  * Encoder Web Worker
  * 
  * This worker handles the actual encoding process using WebCodecs.
- * It receives VideoFrame and AudioData objects and produces encoded chunks.
+ * It receives VideoFrame and AudioData objects, encodes them,
+ * and muxes them into MPEG-TS chunks.
  */
 
 import { VideoEncoderWrapper } from './video-encoder';
 import { AudioEncoderWrapper } from './audio-encoder';
+import { MuxerWrapper } from './muxer';
 
 let videoEncoder: VideoEncoderWrapper | null = null;
 let audioEncoder: AudioEncoderWrapper | null = null;
+let muxer: MuxerWrapper | null = null;
 let mainPort: MessagePort | null = null;
 
 self.onmessage = (event: MessageEvent) => {
@@ -47,10 +50,23 @@ async function handleMessage(event: MessageEvent) {
   }
 }
 
+function initMuxerIfNeeded(videoCodecStr: string, audioCodecStr: string) {
+  if (!muxer && mainPort) {
+    muxer = new MuxerWrapper((data) => {
+      mainPort?.postMessage({
+        type: 'MPEG_TS_CHUNK',
+        payload: data
+      }, [data.buffer]);
+    }, videoCodecStr, audioCodecStr);
+  }
+}
+
 async function setupVideoEncoder(config: any) {
   if (videoEncoder) {
     videoEncoder.close();
   }
+
+  initMuxerIfNeeded(config.codec || 'avc', 'aac');
 
   videoEncoder = new VideoEncoderWrapper({
     width: config.width,
@@ -58,7 +74,10 @@ async function setupVideoEncoder(config: any) {
     fps: config.framerate,
     bitrate: config.bitrate,
     onOutput: (chunk, metadata) => {
-      // Transfer the chunk back to the main thread
+      muxer?.addVideoChunk(chunk, metadata).catch(e => {
+        mainPort?.postMessage({ type: 'ERROR', payload: { source: 'muxer', message: e.message } });
+      });
+
       const data = new Uint8Array(chunk.byteLength);
       chunk.copyTo(data);
       mainPort?.postMessage({
@@ -86,12 +105,18 @@ async function setupAudioEncoder(config: any) {
     audioEncoder.close();
   }
 
+  initMuxerIfNeeded('avc', config.codec || 'aac');
+
   audioEncoder = new AudioEncoderWrapper({
     sampleRate: config.sampleRate,
     numberOfChannels: config.numberOfChannels,
     bitrate: config.bitrate,
     codec: config.codec,
     onOutput: (chunk, metadata) => {
+      muxer?.addAudioChunk(chunk, metadata).catch(e => {
+        mainPort?.postMessage({ type: 'ERROR', payload: { source: 'muxer', message: e.message } });
+      });
+
       const data = new Uint8Array(chunk.byteLength);
       chunk.copyTo(data);
       mainPort?.postMessage({
@@ -149,6 +174,12 @@ async function flushEncoders() {
   if (audioEncoder) promises.push(audioEncoder.flush());
   
   await Promise.all(promises);
+
+  if (muxer) {
+    await muxer.flush();
+    muxer = null;
+  }
+
   mainPort?.postMessage({ type: 'FLUSHED' });
 }
 
@@ -160,5 +191,9 @@ function stopEncoders() {
   if (audioEncoder) {
     audioEncoder.close();
     audioEncoder = null;
+  }
+  if (muxer) {
+    muxer.flush().catch(() => {});
+    muxer = null;
   }
 }
