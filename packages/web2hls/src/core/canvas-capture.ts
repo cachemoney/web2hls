@@ -8,6 +8,11 @@ export interface CanvasCaptureConfig {
   maxQueueSize?: number;
 }
 
+export interface CaptureStats {
+  captureFps: number;
+  droppedFrames: number;
+}
+
 export class CanvasCapture {
   private config: CanvasCaptureConfig;
   private animationFrameId: number | null = null;
@@ -16,9 +21,16 @@ export class CanvasCapture {
   private encoderQueueSize = 0;
   private stopped = false;
 
+  // Stats
+  private droppedFrames = 0;
+  private frameCount = 0;
+  private lastStatsTimestamp = 0;
+  private currentFps = 0;
+
   constructor(config: CanvasCaptureConfig) {
     this.config = config;
     this.frameIntervalUs = 1_000_000 / config.fps;
+    this.lastStatsTimestamp = config.clock.now();
   }
 
   setEncoderQueueSize(size: number): void {
@@ -28,6 +40,9 @@ export class CanvasCapture {
   start(): void {
     this.stopped = false;
     this.lastFrameTimestamp = -Infinity;
+    this.frameCount = 0;
+    this.droppedFrames = 0;
+    this.lastStatsTimestamp = this.config.clock.now();
     this.loop();
   }
 
@@ -39,20 +54,41 @@ export class CanvasCapture {
     }
   }
 
+  getStats(): CaptureStats {
+    this.updateFps();
+    return {
+      captureFps: this.currentFps,
+      droppedFrames: this.droppedFrames,
+    };
+  }
+
+  private updateFps(): void {
+    const now = this.config.clock.now();
+    const elapsedUs = now - this.lastStatsTimestamp;
+    if (elapsedUs >= 1_000_000) { // Update every second
+      this.currentFps = (this.frameCount * 1_000_000) / elapsedUs;
+      this.frameCount = 0;
+      this.lastStatsTimestamp = now;
+    }
+  }
+
   private loop = (): void => {
     if (this.stopped) return;
 
-    const maxQueue = this.config.maxQueueSize ?? 2;
-    if (this.encoderQueueSize > maxQueue) {
-      this.animationFrameId = requestAnimationFrame(this.loop);
-      return;
-    }
-
     const now = this.config.clock.now();
+    
+    // Check if it's time for a new frame
     if (now - this.lastFrameTimestamp >= this.frameIntervalUs) {
-      const frame = new VideoFrame(this.config.canvas, { timestamp: now });
-      this.lastFrameTimestamp = now;
-      this.config.onFrame(frame);
+      const maxQueue = this.config.maxQueueSize ?? 2;
+      
+      if (this.encoderQueueSize > maxQueue) {
+        this.droppedFrames++;
+      } else {
+        const frame = new VideoFrame(this.config.canvas, { timestamp: now });
+        this.lastFrameTimestamp = now;
+        this.frameCount++;
+        this.config.onFrame(frame);
+      }
     }
 
     this.animationFrameId = requestAnimationFrame(this.loop);

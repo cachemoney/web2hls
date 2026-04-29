@@ -7,6 +7,7 @@ export interface EncoderOrchestratorConfig {
   onVideoChunk: (chunk: EncodedChunk) => void;
   onAudioChunk: (chunk: EncodedChunk) => void;
   onMuxedChunk?: (chunk: Uint8Array) => void;
+  onSegmentBoundary?: () => void;
   onError: (error: { source: string; message: string }) => void;
 }
 
@@ -41,6 +42,10 @@ export class EncoderOrchestrator {
 
   configureAudio(config: AudioEncoderConfig): void {
     this.port?.postMessage({ type: 'CONFIGURE_AUDIO', payload: config });
+  }
+
+  forceKeyframe(): void {
+    this.port?.postMessage({ type: 'FORCE_KEYFRAME' });
   }
 
   encodeVideo(frame: VideoFrame): void {
@@ -92,6 +97,9 @@ export class EncoderOrchestrator {
     switch (type) {
       case 'MPEG_TS_CHUNK':
         if (this.config.onMuxedChunk) this.config.onMuxedChunk(payload);
+        break;
+      case 'SEGMENT_BOUNDARY':
+        if (this.config.onSegmentBoundary) this.config.onSegmentBoundary();
         break;
       case 'VIDEO_CHUNK':
         this.config.onVideoChunk(payload);

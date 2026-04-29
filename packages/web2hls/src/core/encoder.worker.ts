@@ -14,6 +14,7 @@ let videoEncoder: VideoEncoderWrapper | null = null;
 let audioEncoder: AudioEncoderWrapper | null = null;
 let muxer: MuxerWrapper | null = null;
 let mainPort: MessagePort | null = null;
+let pendingKeyframe = false;
 
 self.onmessage = (event: MessageEvent) => {
   const { type, payload } = event.data;
@@ -35,6 +36,9 @@ async function handleMessage(event: MessageEvent) {
     case 'CONFIGURE_AUDIO':
       await setupAudioEncoder(payload);
       break;
+    case 'FORCE_KEYFRAME':
+      pendingKeyframe = true;
+      break;
     case 'ENCODE_VIDEO':
       encodeVideoFrame(payload);
       break;
@@ -47,6 +51,13 @@ async function handleMessage(event: MessageEvent) {
     case 'STOP':
       stopEncoders();
       break;
+  }
+}
+
+async function rotateMuxer() {
+  if (muxer) {
+    await muxer.flush();
+    muxer = null;
   }
 }
 
@@ -73,7 +84,14 @@ async function setupVideoEncoder(config: any) {
     height: config.height,
     fps: config.framerate,
     bitrate: config.bitrate,
-    onOutput: (chunk, metadata) => {
+    onOutput: async (chunk, metadata) => {
+      if (chunk.type === 'key') {
+        await rotateMuxer();
+        mainPort?.postMessage({ type: 'SEGMENT_BOUNDARY' });
+      }
+      
+      initMuxerIfNeeded(config.codec || 'avc', 'aac');
+
       muxer?.addVideoChunk(chunk, metadata).catch(e => {
         mainPort?.postMessage({ type: 'ERROR', payload: { source: 'muxer', message: e.message } });
       });
@@ -113,6 +131,7 @@ async function setupAudioEncoder(config: any) {
     bitrate: config.bitrate,
     codec: config.codec,
     onOutput: (chunk, metadata) => {
+      initMuxerIfNeeded('avc', config.codec || 'aac');
       muxer?.addAudioChunk(chunk, metadata).catch(e => {
         mainPort?.postMessage({ type: 'ERROR', payload: { source: 'muxer', message: e.message } });
       });
@@ -149,7 +168,8 @@ function encodeVideoFrame(frame: VideoFrame) {
   }
 
   try {
-    videoEncoder.encode(frame);
+    videoEncoder.encode(frame, { keyFrame: pendingKeyframe });
+    pendingKeyframe = false;
   } finally {
     frame.close();
   }

@@ -53,6 +53,7 @@ export interface PipelineStats {
   droppedFrames: number;
   segmentsUploaded: number;
   totalBytesSent: number;
+  health?: string;
 }
 
 /** YouTube stream resource from the API */
