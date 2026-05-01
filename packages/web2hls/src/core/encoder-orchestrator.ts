@@ -18,8 +18,15 @@ export class EncoderOrchestrator {
 
   constructor(config: EncoderOrchestratorConfig) {
     this.config = config;
+    const url = typeof config.workerUrl === 'string' ? config.workerUrl : config.workerUrl.href;
+    console.log('EncoderOrchestrator: Creating worker with URL:', url);
     this.worker = new Worker(config.workerUrl, { type: 'module' });
     
+    this.worker.onerror = (e) => {
+      console.error('EncoderOrchestrator: Worker error:', e);
+      this.config.onError({ source: 'worker', message: 'Worker failed to load' });
+    };
+
     // Setup MessageChannel for low-latency communication
     const channel = new MessageChannel();
     this.port = channel.port1;

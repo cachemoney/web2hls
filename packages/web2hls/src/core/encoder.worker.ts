@@ -73,90 +73,99 @@ function initMuxerIfNeeded(videoCodecStr: string, audioCodecStr: string) {
 }
 
 async function setupVideoEncoder(config: any) {
-  if (videoEncoder) {
-    videoEncoder.close();
-  }
-
-  initMuxerIfNeeded(config.codec || 'avc', 'aac');
-
-  videoEncoder = new VideoEncoderWrapper({
-    width: config.width,
-    height: config.height,
-    fps: config.framerate,
-    bitrate: config.bitrate,
-    onOutput: async (chunk, metadata) => {
-      if (chunk.type === 'key') {
-        await rotateMuxer();
-        mainPort?.postMessage({ type: 'SEGMENT_BOUNDARY' });
-      }
-      
-      initMuxerIfNeeded(config.codec || 'avc', 'aac');
-
-      muxer?.addVideoChunk(chunk, metadata).catch(e => {
-        mainPort?.postMessage({ type: 'ERROR', payload: { source: 'muxer', message: e.message } });
-      });
-
-      const data = new Uint8Array(chunk.byteLength);
-      chunk.copyTo(data);
-      mainPort?.postMessage({
-        type: 'VIDEO_CHUNK',
-        payload: {
-          data,
-          timestamp: chunk.timestamp,
-          type: chunk.type,
-          duration: chunk.duration,
-          metadata
-        }
-      }, [data.buffer]);
-    },
-    onError: (e) => {
-      mainPort?.postMessage({ type: 'ERROR', payload: { source: 'video', message: e.message } });
+  try {
+    if (videoEncoder) {
+      videoEncoder.close();
     }
-  });
 
-  await videoEncoder.start();
+    initMuxerIfNeeded(config.codec || 'avc', 'aac');
+
+    videoEncoder = new VideoEncoderWrapper({
+      codec: config.codec,
+      width: config.width,
+      height: config.height,
+      fps: config.framerate,
+      bitrate: config.bitrate,
+      onOutput: async (chunk, metadata) => {
+        if (chunk.type === 'key') {
+          await rotateMuxer();
+          mainPort?.postMessage({ type: 'SEGMENT_BOUNDARY' });
+        }
+        
+        initMuxerIfNeeded(config.codec || 'avc', 'aac');
+
+        muxer?.addVideoChunk(chunk, metadata).catch(e => {
+          mainPort?.postMessage({ type: 'ERROR', payload: { source: 'muxer', message: e.message } });
+        });
+
+        const data = new Uint8Array(chunk.byteLength);
+        chunk.copyTo(data);
+        mainPort?.postMessage({
+          type: 'VIDEO_CHUNK',
+          payload: {
+            data,
+            timestamp: chunk.timestamp,
+            type: chunk.type,
+            duration: chunk.duration,
+            metadata
+          }
+        }, [data.buffer]);
+      },
+      onError: (e) => {
+        mainPort?.postMessage({ type: 'ERROR', payload: { source: 'video', message: e.message } });
+      }
+    });
+
+    await videoEncoder.start();
+  } catch (e: any) {
+    mainPort?.postMessage({ type: 'ERROR', payload: { source: 'video_init', message: e.message } });
+  }
 }
 
 async function setupAudioEncoder(config: any) {
-  if (audioEncoder) {
-    audioEncoder.close();
-  }
-
-  initMuxerIfNeeded('avc', config.codec || 'aac');
-
-  audioEncoder = new AudioEncoderWrapper({
-    sampleRate: config.sampleRate,
-    numberOfChannels: config.numberOfChannels,
-    bitrate: config.bitrate,
-    codec: config.codec,
-    onOutput: (chunk, metadata) => {
-      initMuxerIfNeeded('avc', config.codec || 'aac');
-      muxer?.addAudioChunk(chunk, metadata).catch(e => {
-        mainPort?.postMessage({ type: 'ERROR', payload: { source: 'muxer', message: e.message } });
-      });
-
-      const data = new Uint8Array(chunk.byteLength);
-      chunk.copyTo(data);
-      mainPort?.postMessage({
-        type: 'AUDIO_CHUNK',
-        payload: {
-          data,
-          timestamp: chunk.timestamp,
-          type: chunk.type,
-          duration: chunk.duration,
-          metadata
-        }
-      }, [data.buffer]);
-    },
-    onError: (e) => {
-      mainPort?.postMessage({ type: 'ERROR', payload: { source: 'audio', message: e.message } });
-    },
-    onPressureChange: (state) => {
-      mainPort?.postMessage({ type: 'TELEMETRY', payload: { source: 'pressure', state } });
+  try {
+    if (audioEncoder) {
+      audioEncoder.close();
     }
-  });
 
-  await audioEncoder.start();
+    initMuxerIfNeeded('avc', config.codec || 'aac');
+
+    audioEncoder = new AudioEncoderWrapper({
+      sampleRate: config.sampleRate,
+      numberOfChannels: config.numberOfChannels,
+      bitrate: config.bitrate,
+      codec: config.codec,
+      onOutput: (chunk, metadata) => {
+        initMuxerIfNeeded('avc', config.codec || 'aac');
+        muxer?.addAudioChunk(chunk, metadata).catch(e => {
+          mainPort?.postMessage({ type: 'ERROR', payload: { source: 'muxer', message: e.message } });
+        });
+
+        const data = new Uint8Array(chunk.byteLength);
+        chunk.copyTo(data);
+        mainPort?.postMessage({
+          type: 'AUDIO_CHUNK',
+          payload: {
+            data,
+            timestamp: chunk.timestamp,
+            type: chunk.type,
+            duration: chunk.duration,
+            metadata
+          }
+        }, [data.buffer]);
+      },
+      onError: (e) => {
+        mainPort?.postMessage({ type: 'ERROR', payload: { source: 'audio', message: e.message } });
+      },
+      onPressureChange: (state) => {
+        mainPort?.postMessage({ type: 'TELEMETRY', payload: { source: 'pressure', state } });
+      }
+    });
+
+    await audioEncoder.start();
+  } catch (e: any) {
+    mainPort?.postMessage({ type: 'ERROR', payload: { source: 'audio_init', message: e.message } });
+  }
 }
 
 function encodeVideoFrame(frame: VideoFrame) {

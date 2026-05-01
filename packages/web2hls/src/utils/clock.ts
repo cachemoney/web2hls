@@ -28,11 +28,10 @@ export class MonotonicClock {
 
   /**
    * Returns the elapsed time in microseconds since the clock started.
-   * @returns Microseconds elapsed.
-   * @throws Error if the clock has not been started.
+   * @returns Microseconds elapsed, or 0 if the clock is not started.
    */
   now(): number {
-    if (!this.running) throw new Error('Clock not started');
+    if (!this.running) return 0;
     return Math.round(performance.now() * 1000 - this.startTime);
   }
 

@@ -1,4 +1,5 @@
 import { MonotonicClock } from '../utils/clock';
+import { logger } from '../utils/logger';
 
 export interface CanvasCaptureConfig {
   canvas: HTMLCanvasElement | OffscreenCanvas;
@@ -30,7 +31,7 @@ export class CanvasCapture {
   constructor(config: CanvasCaptureConfig) {
     this.config = config;
     this.frameIntervalUs = 1_000_000 / config.fps;
-    this.lastStatsTimestamp = config.clock.now();
+    this.lastStatsTimestamp = 0;
   }
 
   setEncoderQueueSize(size: number): void {
@@ -84,6 +85,9 @@ export class CanvasCapture {
       if (this.encoderQueueSize > maxQueue) {
         this.droppedFrames++;
       } else {
+        if (this.frameCount % 100 === 0) {
+          logger.debug(`CanvasCapture: Captured ${this.frameCount} frames`);
+        }
         const frame = new VideoFrame(this.config.canvas, { timestamp: now });
         this.lastFrameTimestamp = now;
         this.frameCount++;

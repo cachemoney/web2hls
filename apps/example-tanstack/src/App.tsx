@@ -1,14 +1,29 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { useStreamPipeline, StreamCanvas, StreamHealth } from '@web2hls/react'
+import { useStreamPipeline, StreamCanvas, StreamHealth, OAuthButton, useYouTubeAuth } from '@web2hls/react'
+import { HLSUploader } from 'web2hls'
 import './App.css'
+
+const YOUTUBE_CONFIG = {
+  clientId: 'mock-client-id',
+  redirectUri: window.location.origin,
+}
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ingestionUrl, setIngestionUrl] = useState('http://localhost:8080/live/stream.m3u8')
+  const [codec, setCodec] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('codec') || 'avc1.640028'
+  })
   
+  const { isAuthenticated } = useYouTubeAuth(YOUTUBE_CONFIG)
+
   // Animation state
   const requestRef = useRef<number>(null)
   const rotationRef = useRef(0)
+
+  // Initialize uploader
+  const uploader = useMemo(() => new HLSUploader({ ingestionUrl }), [ingestionUrl])
 
   // Configure pipeline
   const config = useMemo(() => ({
@@ -18,12 +33,14 @@ function App() {
       height: 720,
       fps: 30,
       bitrate: 2_500_000,
+      codec: codec,
     },
     segmentDuration: 4,
     onSegment: (segment: any) => {
-      console.log('New segment generated:', segment.id, segment.duration, 'seconds');
+      console.log('New segment generated:', segment.index, segment.duration, 'seconds');
+      uploader.enqueue(segment);
     }
-  }), [canvasRef.current])
+  }), [canvasRef.current, uploader, codec])
 
   const { start, stop, state, pipeline, error } = useStreamPipeline(config)
 
@@ -130,6 +147,27 @@ function App() {
         <aside className="controls">
           <section className="config-panel">
             <h3>Pipeline Config</h3>
+            
+            <div className="auth-section">
+              <OAuthButton config={YOUTUBE_CONFIG} className="youtube-auth-btn" />
+              {isAuthenticated && <span className="auth-status">✓ Authenticated</span>}
+            </div>
+
+            <div className="input-group">
+              <label htmlFor="codec">Codec</label>
+              <select 
+                id="codec"
+                value={codec}
+                onChange={(e) => setCodec(e.target.value)}
+                disabled={state !== 'idle' && state !== 'stopped'}
+              >
+                <option value="avc1.640028">H.264 High</option>
+                <option value="avc1.4d401f">H.264 Main</option>
+                <option value="avc1.42e01f">H.264 Baseline</option>
+                <option value="mock">Mock Encoder (Testing)</option>
+              </select>
+            </div>
+
             <div className="input-group">
               <label htmlFor="ingestion-url">Ingestion URL</label>
               <input 

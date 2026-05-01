@@ -47,13 +47,20 @@ export class StreamingPipeline {
     
     this.segmenter = new HLSSegmenter({
       onSegment: (segment) => {
+        logger.info(`Pipeline: New segment ready: index=${segment.index}, duration=${segment.duration}s`);
         if (this.config.onSegment) this.config.onSegment(segment);
         this.stats.segmentsUploaded++;
       }
     });
 
+    const isDist = import.meta.url.includes('/dist/');
+    const workerUrl = new URL(
+      isDist ? './core/encoder.worker.mjs' : './core/encoder.worker.ts',
+      import.meta.url
+    );
+
     this.encoders = new EncoderOrchestrator({
-      workerUrl: new URL('./core/encoder.worker.ts', import.meta.url),
+      workerUrl,
       videoConfig: {
         width: config.video.width,
         height: config.video.height,
@@ -74,6 +81,7 @@ export class StreamingPipeline {
         const targetDuration = this.config.segmentDuration || 4;
 
         if (duration >= targetDuration) {
+          logger.debug(`Pipeline: Duration ${duration.toFixed(2)}s >= target ${targetDuration}s, forcing keyframe`);
           this.encoders.forceKeyframe();
         }
       },
@@ -84,6 +92,7 @@ export class StreamingPipeline {
       },
       onSegmentBoundary: () => {
         const now = this.clock.now();
+        logger.info(`Pipeline: Segment boundary detected at ${now}us`);
         this.segmenter.rotate(now);
         this.segmentStartTime = now;
       },
@@ -181,8 +190,12 @@ export class StreamingPipeline {
   }
 
   getStats(): PipelineStats {
+    return this.stats;
+  }
+
+  private updateStats(): void {
     const captureStats = this.canvasCapture.getStats();
-    return {
+    this.stats = {
       ...this.stats,
       fps: captureStats.captureFps,
       droppedFrames: captureStats.droppedFrames,
@@ -206,6 +219,7 @@ export class StreamingPipeline {
   }
 
   private notifyListeners(): void {
+    this.updateStats();
     const stats = this.getStats();
     this.listeners.forEach(listener => listener(stats));
   }
